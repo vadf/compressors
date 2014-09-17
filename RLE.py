@@ -28,28 +28,42 @@ def compress(orig):
         return dest
     if len(orig) == 1:
         save_seq_diff(orig, dest)
+        orig.pop()
         return dest
-    
+
     seq_count = 1
     prev_byte = orig.pop(0)
     seq_diff = [prev_byte]
     while len(orig) > 0:
         cur_byte = orig.pop(0)
+        #next_byte = orig.pop(0)
         if cur_byte == prev_byte:
             seq_count += 1
             if len(seq_diff) > 1:
                 seq_diff.pop()
                 save_seq_diff(seq_diff, dest)
             seq_diff = []
+
+            # check seq lenth (max 127 + 2)
             if seq_count > 128:
                 save_seq_same(seq_count, prev_byte, dest)
                 seq_count = 0
+
+                # start checking orig array from begining
+                dest += compress(orig)
         else:
             seq_diff.append(cur_byte)
             if seq_count > 1:
                 save_seq_same(seq_count, prev_byte, dest)
                 seq_count = 1
+
+            # check seq lenth (max 127 + 1)
             if len(seq_diff) > 127:
+                # check, probably new identical seq started at 128 element
+                if len(orig) > 0:
+                    if cur_byte == orig[0]:
+                        seq_count = 1
+                        seq_diff.pop()
                 save_seq_diff(seq_diff, dest)
                 seq_diff = []
 
@@ -93,5 +107,5 @@ def decompress(orig):
 if __name__ == '__main__':
     orig_array = [128] * 130
     orig_array += [1]
-    compress(orig_array)
+    compress([0] * 130)
 
