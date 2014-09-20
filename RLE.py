@@ -1,14 +1,18 @@
-def save_seq_same(seq_count, last_byte, dest):
-    """ (int, byte, ) -> NoneType
+# service_byte:
+# 1 bit (first) is sequence type: 0 - different element, 1 - same element
+# 7 bits for sequence length
+max_seq = 127
+max_seq_same = max_seq + 2
+max_seq_diff = max_seq + 1
 
-    Save the sequence of the same bytes
-    """
+def save_seq_same(seq_count, last_byte, dest):
+    """ Compress the sequence of the same bytes """
     service_byte = 128 | (seq_count - 2)
     dest.append(service_byte)
     dest.append(last_byte)
 
 def save_seq_diff(seq_diff, dest):
-    """ save sequence of different bytes """
+    """ Compress sequence of different bytes """
     service_byte = len(seq_diff) - 1
     dest.append(service_byte)
     dest.extend(seq_diff)
@@ -36,7 +40,6 @@ def compress(orig):
     seq_diff = [prev_byte]
     while len(orig) > 0:
         cur_byte = orig.pop(0)
-        #next_byte = orig.pop(0)
         if cur_byte == prev_byte:
             seq_count += 1
             if len(seq_diff) > 1:
@@ -44,12 +47,12 @@ def compress(orig):
                 save_seq_diff(seq_diff, dest)
             seq_diff = []
 
-            # check seq lenth (max 127 + 2)
-            if seq_count > 128:
+            # check seq lenth
+            if seq_count >= max_seq_same:
                 save_seq_same(seq_count, prev_byte, dest)
                 seq_count = 0
 
-                # start checking orig array from begining
+                # proceed the rest of orig array from begining
                 dest += compress(orig)
         else:
             seq_diff.append(cur_byte)
@@ -57,8 +60,8 @@ def compress(orig):
                 save_seq_same(seq_count, prev_byte, dest)
                 seq_count = 1
 
-            # check seq lenth (max 127 + 1)
-            if len(seq_diff) > 127:
+            # check seq lenth
+            if len(seq_diff) >= max_seq_diff:
                 # check, probably new identical seq started at 128 element
                 if len(orig) > 0:
                     if cur_byte == orig[0]:
