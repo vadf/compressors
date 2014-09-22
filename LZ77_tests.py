@@ -67,7 +67,7 @@ class TestLZ77(unittest.TestCase):
         actual = LZ77.find_best_subsequence(text, LZ77.max_block)
         expected = 'abc'
         self.assertEqual(actual, expected)
-        
+
     def test_find_sequence_max_1_pos(self):
         text = 'abc' + ('d' * (LZ77.max_block - 2)) + 'abc'
         actual = LZ77.find_best_subsequence(text, LZ77.max_block + 1)
@@ -88,7 +88,7 @@ class TestLZ77(unittest.TestCase):
         text = '12345678'
         actual = LZ77.compress(text)
         expected = bytearray([0]) + bytearray(b'12345678')
-        self.assertEqual(actual, expected)  
+        self.assertEqual(actual, expected)
 
     def test_compress_seq_diff_9_char(self):
         """ Compress string of 9 char (2 service bytes) """
@@ -111,7 +111,7 @@ class TestLZ77(unittest.TestCase):
         actual = LZ77.compress(text)
         expected = bytearray([32]) + bytearray(b'bb') + bytearray([0, 16])
         self.assertEqual(actual, expected)
-        
+
     @unittest.skip("algorith improvement is needed")
     def test_compress(self):
         """ Compress string from example """
@@ -124,7 +124,7 @@ class TestLZ77(unittest.TestCase):
         print(expected)
         print(actual)
         self.assertEqual(actual, expected)
-    
+
     def test_compress_1(self):
         """ Compress string of type: seq1_char_se1 """
         text = 'abcdabc'
@@ -139,15 +139,15 @@ class TestLZ77(unittest.TestCase):
         expected = bytearray([3]) + bytearray(b'abcdef')\
                    + bytearray([0, 32]) + bytearray([0, 113])
         self.assertEqual(actual, expected)
-        
+
     def test_compress_3(self):
-        """ Compress st3ing of seq1_seq2_seq_1:
+        """ Compress string of seq1_seq2_seq_1:
         service byte: 00000001"""
         text = 'abcdefgabcde'
         actual = LZ77.compress(text)
         expected = bytearray([1]) + bytearray(b'abcdefg') + bytearray([0, 99])
         self.assertEqual(actual, expected)
-        
+
     def test_compress_4(self):
         """ Compress string of seq1_seq2_seq_2:
         service bytes: 00000000, 10000000 """
@@ -190,6 +190,91 @@ class TestLZ77(unittest.TestCase):
                    + bytearray([1, 63]) + bytearray([1, 49])\
                    + bytearray('34', 'utf-8')
         self.assertEqual(actual, expected)
-        
+
+    def test_compress_offset_less_len(self):
+        """ Compress string that has repeated sequences where offset
+        is less then sequence lenth """
+        text = 'ababab'
+        actual = LZ77.compress(text)
+        expected = bytearray([32]) + bytearray(b'ab') + bytearray([0, 18])
+        self.assertEqual(actual, expected)
+
+#################
+
+    def test_decompress_1_char(self):
+        """ Decompress string of 1 char """
+        b_array = bytearray([0]) + bytearray(b'a')
+        actual = LZ77.decompress(b_array)
+        expected = 'a'
+        self.assertEqual(actual, expected)
+
+    def test_decompress_seq_diff_8_char(self):
+        """ Decompress string of 8 char (full 1 service byte) """
+        b_array = bytearray([0]) + bytearray(b'12345678')
+        actual = LZ77.decompress(b_array)
+        expected = '12345678'
+        self.assertEqual(actual, expected)
+
+    def test_decompress_seq_diff_9_char(self):
+        """ Decompress string of 9 char (2 service bytes) """
+        b_array = bytearray([0]) + bytearray(b'12345678') \
+                   + bytearray([0]) + bytearray(b'9')
+        actual = LZ77.decompress(b_array)
+        expected = '123456789'
+        self.assertEqual(actual, expected)
+
+    def test_decompress_1(self):
+        """ Decompress string that has repeated sequence """
+        b_array = bytearray([8]) + bytearray(b'abcd') + bytearray([0, 49])
+        actual = LZ77.decompress(b_array)
+        expected = 'abcdabc'
+        self.assertEqual(actual, expected)
+
+    def test_decompress_2(self):
+        """ Decompress string that has 2 repeated sequences """
+        b_array = bytearray([3]) + bytearray(b'abcdef')\
+                   + bytearray([0, 32]) + bytearray([0, 113])
+        actual = LZ77.decompress(b_array)
+        expected = 'abcdefdeabc'
+        self.assertEqual(actual, expected)
+
+    def test_decompress_3(self):
+        """ Decompress string that ends with repeated sequence:
+        service byte: 00000001"""
+        b_array = bytearray([1]) + bytearray(b'abcdefg') + bytearray([0, 99])
+        actual = LZ77.decompress(b_array)
+        expected = 'abcdefgabcde'
+        self.assertEqual(actual, expected)
+
+    def test_decompress_4(self):
+        """ Decompress string that has repeated sequences at the begin of service_byte:
+        service bytes: 00000000, 10000000 """
+        b_array = bytearray([0]) + bytearray(b'abcdefgh')\
+                   + bytearray([128]) + bytearray([0, 84])
+        actual = LZ77.decompress(b_array)
+        expected = 'abcdefghcdefgh'
+        self.assertEqual(actual, expected)
+
+    def test_decompress_max_seq_len(self):
+        """ Decompress string that has repeated sequence of max len (17) """
+        a_int = ord('a')
+        seq = ''.join(map(chr, range(a_int, a_int + LZ77.max_seq)))
+        text = '123' + seq + '345' + seq
+        b_array = bytearray([0]) + bytearray(text[:8], 'utf-8')\
+                   + bytearray([0]) + bytearray(text[8: 16], 'utf-8')\
+                   + bytearray([1]) + bytearray(text[16: 23], 'utf-8')\
+                   + bytearray([1, 63])
+        actual = LZ77.decompress(b_array)
+        expected = text
+        self.assertEqual(actual, expected)
+
+    def test_decompress_offset_less_len(self):
+        """ Decompress string that has repeated sequences where offset
+        is less then sequence lenth """
+        b_array = bytearray([32]) + bytearray(b'ab') + bytearray([0, 18])
+        actual = LZ77.decompress(b_array)
+        expected = 'ababab'
+        self.assertEqual(actual, expected)
+
 if __name__ == '__main__':
     unittest.main(exit=False)
