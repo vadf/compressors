@@ -6,43 +6,51 @@ class TestLZ77(unittest.TestCase):
 
     def test_find_sequence_pos1(self):
         text = 'abab'
-        actual = LZ77.find_best_subsequence(text, 2)
+        actual, pos = LZ77.find_best_subsequence(text, 2)
         expected = 'ab'
         self.assertEqual(actual, expected)
+        self.assertEqual(pos, 0)
 
     def test_find_sequence_pos2(self):
         text = 'ababa'
-        actual = LZ77.find_best_subsequence(text, 2)
+        actual, pos = LZ77.find_best_subsequence(text, 2)
         expected = 'ab'
         self.assertEqual(actual, expected)
 
     def test_find_sequence_pos3(self):
         text = 'abbbabb'
-        actual = LZ77.find_best_subsequence(text, 4)
+        actual, pos = LZ77.find_best_subsequence(text, 4)
         expected = 'abb'
         self.assertEqual(actual, expected)
 
     def test_find_sequence_pos4(self):
         text = 'ababbb'
-        actual = LZ77.find_best_subsequence(text, 2)
+        actual, pos = LZ77.find_best_subsequence(text, 2)
         expected = 'ab'
         self.assertEqual(actual, expected)
 
+    def test_find_sequence_pos5(self):
+        text = 'ccabab'
+        actual, pos = LZ77.find_best_subsequence(text, 4)
+        expected = 'ab'
+        self.assertEqual(actual, expected)
+        self.assertEqual(pos, 2)
+
     def test_find_sequence_best(self):
         text = 'abcabcdeabcd'
-        actual = LZ77.find_best_subsequence(text, 8)
+        actual, pos = LZ77.find_best_subsequence(text, 8)
         expected = 'abcd'
         self.assertEqual(actual, expected)
 
     def test_find_sequence_neg1(self):
         text = 'abaabb'
-        actual = LZ77.find_best_subsequence(text, 2)
+        actual, pos = LZ77.find_best_subsequence(text, 2)
         expected = ''
         self.assertEqual(actual, expected)
 
     def test_find_sequence_neg2(self):
         text = 'aabbxbb'
-        actual = LZ77.find_best_subsequence(text, 2)
+        actual, pos = LZ77.find_best_subsequence(text, 2)
         expected = ''
         self.assertEqual(actual, expected)
 
@@ -50,7 +58,7 @@ class TestLZ77(unittest.TestCase):
         a_int = ord('a')
         seq = ''.join(map(chr, range(a_int, a_int + LZ77.max_seq)))
         text = seq * 2
-        actual = LZ77.find_best_subsequence(text, len(seq))
+        actual, pos = LZ77.find_best_subsequence(text, len(seq))
         expected = seq
         self.assertEqual(actual, expected)
 
@@ -58,20 +66,37 @@ class TestLZ77(unittest.TestCase):
         a_int = ord('a')
         seq = ''.join(map(chr, range(a_int, a_int + LZ77.max_seq + 1)))
         text = seq * 2
-        actual = LZ77.find_best_subsequence(text, len(seq))
+        actual, pos = LZ77.find_best_subsequence(text, len(seq))
         expected = seq[:LZ77.max_seq]
         self.assertEqual(actual, expected)
 
     def test_find_sequence_max_pos(self):
         text = 'abc' + ('d' * (LZ77.max_block - 3)) + 'abc'
-        actual = LZ77.find_best_subsequence(text, LZ77.max_block)
+        actual, pos = LZ77.find_best_subsequence(text, LZ77.max_block)
         expected = 'abc'
         self.assertEqual(actual, expected)
 
     def test_find_sequence_max_1_pos(self):
         text = 'abc' + ('d' * (LZ77.max_block - 2)) + 'abc'
-        actual = LZ77.find_best_subsequence(text, LZ77.max_block + 1)
+        actual, pos = LZ77.find_best_subsequence(text, LZ77.max_block + 1)
         expected = ''
+        self.assertEqual(actual, expected)
+
+#######################
+
+    def test_get_subseq_len1(self):
+        actual = LZ77.get_subseq_len('hahaha', 'ha', 4)
+        expected = 2
+        self.assertEqual(actual, expected)
+
+    def test_get_subseq_len2(self):
+        actual = LZ77.get_subseq_len('hihiha', 'hi', 4)
+        expected = 1
+        self.assertEqual(actual, expected)
+
+    def test_get_subseq_len3(self):
+        actual = LZ77.get_subseq_len('hahaah', 'ha', 4)
+        expected = 0
         self.assertEqual(actual, expected)
 
 #######################
@@ -111,20 +136,6 @@ class TestLZ77(unittest.TestCase):
         actual = LZ77.compress(text)
         expected = bytearray([32]) + bytearray(b'bb') + bytearray([0, 16])
         self.assertEqual(actual, expected)
-
-    @unittest.skip("algorith improvement is needed")
-    def test_compress(self):
-        """ Compress string from example """
-        text = 'The compression and the decompression leavq an impression. Hahahahaha!'
-        actual = LZ77.compress(text)
-        expected = bytearray([0, 84, 104, 101, 32, 99, 111, 109, 112, 0, 114, 101, 115, 115,
-                    105, 111, 110, 32, 4, 97, 110, 100, 32, 116, 1, 49, 100, 101,
-                    130, 1, 90, 108, 101, 97, 118, 101, 1, 117, 32, 65, 105, 2,
-                    151, 46, 32, 72, 97, 104, 0, 21, 0, 33])
-        print(expected)
-        print(actual)
-        self.assertEqual(actual, expected)
-
     def test_compress_1(self):
         """ Compress string of type: seq1_char_se1 """
         text = 'abcdabc'
@@ -191,12 +202,20 @@ class TestLZ77(unittest.TestCase):
                    + bytearray('34', 'utf-8')
         self.assertEqual(actual, expected)
 
-    def test_compress_offset_less_len(self):
+    def test_compress_offset_less_len1(self):
         """ Compress string that has repeated sequences where offset
         is less then sequence lenth """
         text = 'ababab'
         actual = LZ77.compress(text)
         expected = bytearray([32]) + bytearray(b'ab') + bytearray([0, 18])
+        self.assertEqual(actual, expected)
+
+    def test_compress_offset_less_len2(self):
+        """ Compress string that has repeated sequences where offset
+        is less then sequence lenth """
+        text = 'abcdabcdab'
+        actual = LZ77.compress(text)
+        expected = bytearray([8]) + bytearray(b'abcd') + bytearray([0, 52])
         self.assertEqual(actual, expected)
 
 #################
@@ -268,12 +287,20 @@ class TestLZ77(unittest.TestCase):
         expected = text
         self.assertEqual(actual, expected)
 
-    def test_decompress_offset_less_len(self):
+    def test_decompress_offset_less_len1(self):
         """ Decompress string that has repeated sequences where offset
         is less then sequence lenth """
         b_array = bytearray([32]) + bytearray(b'ab') + bytearray([0, 18])
         actual = LZ77.decompress(b_array)
         expected = 'ababab'
+        self.assertEqual(actual, expected)
+
+    def test_decompress_offset_less_len2(self):
+        """ Decompress string that has repeated sequences where offset
+        is less then sequence lenth """
+        b_array = bytearray([8]) + bytearray(b'abcd') + bytearray([0, 52])
+        actual = LZ77.decompress(b_array)
+        expected = 'abcdabcdab'
         self.assertEqual(actual, expected)
 
 if __name__ == '__main__':
